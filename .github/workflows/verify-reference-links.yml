@@ -1,0 +1,39 @@
+name: Verify reference links
+on:
+  push:
+    branches: [verify-reference-links]
+    paths: ['.github/workflows/verify-reference-links.yml']
+permissions:
+  contents: read
+jobs:
+  markdown:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 3
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci --no-audit --no-fund
+      - run: npx svelte-kit sync
+      - name: Render regression on the upstream implementation
+        shell: bash
+        run: |
+          for file in src/lib/utils/{marked,parseBlocks}.ts; do git show f7d31e81c6e36796a8b6ef3512d0fdb74c32c3f2:$file > "$file"; done
+          if npx vitest run --project=server src/lib/utils/marked.spec.ts -t 'renders reference links across paragraphs' > /tmp/before.log 2>&1; then
+            cat /tmp/before.log
+            exit 1
+          fi
+          cat /tmp/before.log
+          grep -q 'the guide' /tmp/before.log
+          git restore src/lib/utils/{marked,parseBlocks}.ts
+      - name: Markdown renderer and block splitting tests
+        run: npx vitest run --project=server src/lib/utils/{marked,parseBlocks}.spec.ts
+      - name: Check formatting
+        if: always()
+        run: |
+          npx prettier --write src/lib/utils/{marked.ts,marked.spec.ts,parseBlocks.ts}
+          git diff --exit-code
