@@ -12,7 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 3
+          ref: c387b68c244d3141b1dba7f9b9505f6bc7ef7b8d
+          fetch-depth: 4
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -37,3 +38,5 @@ jobs:
         run: |
           npx prettier --write src/lib/utils/{marked.ts,marked.spec.ts,parseBlocks.ts}
           git diff --exit-code
+      - name: Lint changed files
+        run: npx eslint src/lib/utils/{marked.ts,marked.spec.ts,parseBlocks.ts}
